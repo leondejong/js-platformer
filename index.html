@@ -13,17 +13,16 @@
         position: absolute;
         top: 50%;
         left: 50%;
-        width: 63rem;
-        height: 45rem;
+        width: 24rem;
+        height: 16rem;
         transform: translate(-50%, -50%);
+        image-rendering: pixelated;
+        image-rendering: crisp-edges;
       }
     </style>
   </head>
   <body>
-    <canvas id="canvas" width="1008" height="720"></canvas>
-    <script src="./sprite.js"></script>
-    <script src="./graphics.js"></script>
-    <script src="./level.js"></script>
-    <script src="./platform.js"></script>
+    <canvas id="canvas" width="384" height="256"></canvas>
+    <script type="module" src="./main.js"></script>
   </body>
 </html>

@@ -1,204 +1,202 @@
-// Formatted by StandardJS
+// Graphics configuration and rendering
 
-const rectangle = 'rectangle'
-const graphic = 'graphic'
+import { configure, range, display } from "./sprite.js";
 
-const backgroundColorBottom = 'rgba(223, 239, 255, 1)'
-const backgroundColorTop = 'rgba(127, 159, 255, 1)'
-const backgroundColor = 'rgba(223, 239, 247, 1)'
-const contentColor = 'rgba(0, 47, 63, 1)'
-const playerColor = 'rgba(255, 63, 0, 1)'
-const textColor = 'rgba(0, 47, 63, 1)'
+// Graphic types
+const types = {
+  rectangle: "rectangle",
+  graphic: "graphic",
+};
 
-const canvas = document.getElementById('canvas')
-const context = canvas.getContext('2d')
+// Default colors
+const colors = {
+  backgroundBottom: "rgba(223, 239, 255, 1)",
+  backgroundTop: "rgba(127, 159, 255, 1)",
+  background: "rgba(223, 239, 247, 1)",
+  content: "rgba(0, 31, 63, 1)",
+  player: "rgba(255, 63, 0, 1)",
+  text: "rgba(0, 47, 63, 1)",
+};
 
-const width = canvas.width
-const height = canvas.height
-
-const scale = 1
-
-async function getTile () {
+// Get environment sprite
+async function getTile() {
   return await configure({
-    element: '#canvas',
-    source: './tiles.png',
-    position: { x: 0, y: 0 },
-    dimension: { x: 18, y: 18 },
+    element: "#canvas",
+    source: "./tiles.png",
+    x: 0,
+    y: 0,
+    width: 18,
+    height: 18,
     frames: 180,
     rows: 9,
     columns: 20,
     first: 1,
-    last: 1
-  })
+    last: 1,
+  });
 }
 
-async function getCharacter () {
+// Get character sprite
+async function getCharacter() {
   return await configure({
-    element: '#canvas',
-    source: './character.png',
-    position: { x: 325, y: 16 },
-    dimension: { x: 24, y: 32 },
+    element: "#canvas",
+    source: "./character.png",
     offset: { x: -4, y: 0 },
-    scale: { x: scale, y: scale },
+    scale: { x: 1, y: 1 },
+    x: 64,
+    y: 32,
+    width: 24,
+    height: 32,
     frames: 32,
     rows: 4,
     columns: 8,
     first: 1,
     last: 1,
-    run: true
-  })
+    run: true,
+  });
 }
 
-function getRectangle (x, y, width, height, color = contentColor) {
+// Get rectangle
+function getRectangle(x, y, width, height, color = colors.content) {
   return {
+    x,
+    y,
+    width,
+    height,
     color,
-    type: rectangle,
-    position: { x, y },
-    dimension: { x: width, y: height }
-  }
+    type: types.rectangle,
+  };
 }
 
-function getGraphic (nx, ny, nw, nh, sprite, tile, solid = true) {
-  const width = sprite.dimension.x * sprite.scale.x
-  const height = sprite.dimension.y * sprite.scale.y
+// Get configured graphic object
+function getGraphic(sprite, nx, ny, nw, nh, tile, solid = true) {
+  const width = sprite.width * sprite.scale.x;
+  const height = sprite.height * sprite.scale.y;
   const rectangle = getRectangle(
     width * nx,
     height * ny,
     width * nw,
     height * nh
-  )
+  );
   return {
     ...range(sprite, tile),
-    type: graphic,
-    rectangle: solid ? rectangle : false,
-    data: { nx, ny, nw, nh, tile, width, height }
-  }
+    solid,
+    rectangle,
+    type: types.graphic,
+    data: { nx, ny, nw, nh, tile, width, height },
+  };
 }
 
-function getScene (sprite) {
+// Calculate sprite frame coordinates
+function getCoordinates(graphic, w, h) {
+  const { nx, ny, width, height } = graphic.data;
   return {
-    gravity: 30,
-    friction: 0.025,
-    airResistance: 0.05,
-    width: canvas.width,
-    height: canvas.height,
-    data: getLevel(sprite)
-  }
+    x: (nx + w) * width + graphic.x,
+    y: (ny + h) * height + graphic.y,
+  };
 }
 
-function getPlayer () {
-  return {
-    type: rectangle,
-    color: playerColor,
-    position: { x: 325, y: 16 },
-    dimension: { x: 16 * scale, y: 32 * scale },
-    velocity: { x: 0, y: 0 },
-    acceleration: { x: 0, y: 0 },
-    direction: { x: 0, y: 0 },
-    previous: { x: 0, y: 0 },
-    force: { x: 0, y: 0 },
-    impulse: { x: 32, y: 0, jump: 14 },
-    up: 69, // e
-    left: 83, // s
-    down: 68, // d
-    right: 70, // f
-    resistance: 0,
-    friction: 0.025,
-    density: 0.25,
-    mass: 64
-  }
+// Draw environment background
+function drawBackground(context, scene) {
+  const { y, height } = scene;
+  const gradient = context.createLinearGradient(0, -y, 0, height - y);
+  gradient.addColorStop(0, colors.backgroundTop);
+  gradient.addColorStop(1, colors.backgroundBottom);
+  context.fillStyle = gradient || colors.background;
+  context.fillRect(0, 0, context.canvas.width, context.canvas.height);
 }
 
-function drawBackground () {
-  const gradient = context.createLinearGradient(0, height, 0, 0)
-  gradient.addColorStop(0, backgroundColorBottom)
-  gradient.addColorStop(1, backgroundColorTop)
-  context.fillStyle = gradient || backgroundColor
-  context.fillRect(0, 0, width, height)
+// Draw rectangle
+function drawRectangle(context, rectangle) {
+  context.fillStyle = rectangle.color || colors.contentColor;
+  context.fillRect(rectangle.x, rectangle.y, rectangle.width, rectangle.height);
 }
 
-function drawRectangle (rectangle) {
-  context.fillStyle = rectangle.color || contentColor
-  context.fillRect(
-    rectangle.position.x,
-    rectangle.position.y,
-    rectangle.dimension.x,
-    rectangle.dimension.y
-  )
-}
-
-function drawGraphic (graphic) {
-  const { nx, ny, nw, nh, width, height, tile } = graphic.data
-  for (let x = 0; x < nw; x++) {
-    for (let y = 0; y < nh; y++) {
+// Draw graphic tiles
+function drawGraphic(graphic) {
+  const { nw, nh, tile } = graphic.data;
+  for (let w = 0; w < nw; w++) {
+    for (let h = 0; h < nh; h++) {
       display({
         ...range(graphic, tile),
-        position: {
-          x: (nx + x) * width,
-          y: (ny + y) * height
-        }
-      })
+        ...getCoordinates(graphic, w, h),
+      });
     }
   }
 }
 
-function getDiagonalSection (nx, ny, sprite, length = 8, tile = 48) {
+// Get generated graphic with diagonal laid out frames
+function getDiagonalSection(sprite, nx, ny, length = 8, tile = 48) {
   return Array(length)
     .fill()
-    .map((_, position) =>
-      getGraphic(position + nx, position + ny, 1, 1, sprite, tile)
-    )
+    .map((_, index) => getGraphic(sprite, index + nx, index + ny, 1, 1, tile));
 }
 
-function getHorizontalSection (nx, ny, sprite, length = 4, tiles) {
+// Get generated graphic with horizontal laid out frames
+function getHorizontalSection(sprite, nx, ny, length = 4, tiles) {
   const { single, first, middle, last } = tiles || {
     single: 48,
     first: 49,
     middle: 50,
-    last: 51
-  }
+    last: 51,
+  };
   if (length < 1) {
-    return []
+    return [];
   }
   if (length === 1) {
-    return [getGraphic(nx, ny, 1, 1, sprite, single)]
+    return [getGraphic(sprite, nx, ny, 1, 1, single)];
   }
   if (length === 2) {
     return [
-      getGraphic(nx, ny, 1, 1, sprite, first),
-      getGraphic(nx + 1, ny, 1, 1, sprite, last)
-    ]
+      getGraphic(sprite, nx, ny, 1, 1, first),
+      getGraphic(sprite, nx + 1, ny, 1, 1, last),
+    ];
   }
   return [
-    getGraphic(nx, ny, 1, 1, sprite, first),
-    getGraphic(nx + 1, ny, length - 1, 1, sprite, middle),
-    getGraphic(nx + length - 1, ny, 1, 1, sprite, last)
-  ]
+    getGraphic(sprite, nx, ny, 1, 1, first),
+    getGraphic(sprite, nx + 1, ny, length - 1, 1, middle),
+    getGraphic(sprite, nx + length - 1, ny, 1, 1, last),
+  ];
 }
 
-function getVerticalSection (nx, ny, sprite, length = 4, tiles) {
-  const graphic = { ...sprite, rotation: Math.PI / 2 }
+// Get generated graphic with vertical laid out frames
+function getVerticalSection(sprite, nx, ny, length = 4, tiles) {
+  const graphic = { ...sprite, rotation: Math.PI / 2 };
   const { single, first, middle, last } = tiles || {
     single: 48,
     first: 49,
     middle: 50,
-    last: 51
-  }
+    last: 51,
+  };
   if (length < 1) {
-    return []
+    return [];
   }
   if (length === 1) {
-    return [getGraphic(nx, ny, 1, 1, graphic, single)]
+    return [getGraphic(graphic, nx, ny, 1, 1, single)];
   }
   if (length === 2) {
     return [
-      getGraphic(nx, ny, 1, 1, graphic, first),
-      getGraphic(nx, ny + 1, 1, 1, graphic, last)
-    ]
+      getGraphic(graphic, nx, ny, 1, 1, first),
+      getGraphic(graphic, nx, ny + 1, 1, 1, last),
+    ];
   }
   return [
-    getGraphic(nx, ny, 1, 1, graphic, first),
-    getGraphic(nx, ny + 1, 1, length - 1, graphic, middle),
-    getGraphic(nx, ny + length - 1, 1, 1, graphic, last)
-  ]
+    getGraphic(graphic, nx, ny, 1, 1, first),
+    getGraphic(graphic, nx, ny + 1, 1, length - 1, middle),
+    getGraphic(graphic, nx, ny + length - 1, 1, 1, last),
+  ];
 }
+
+export {
+  types,
+  colors,
+  getTile,
+  getCharacter,
+  getRectangle,
+  getGraphic,
+  drawBackground,
+  drawRectangle,
+  drawGraphic,
+  getDiagonalSection,
+  getHorizontalSection,
+  getVerticalSection,
+};
